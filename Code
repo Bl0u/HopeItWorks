@@ -1,0 +1,899 @@
+#include <bits/stdc++.h>
+using namespace std;
+#include "User.h"
+
+
+class User
+{
+private:
+    string firstName, secondName ;
+    string userName, passWord ; // login information
+    int userDay, userMonth, userYear ; // handle minor age (done)
+    string contactInformation ;
+    string LoginID ;
+    int balance = 0;
+    int loanrequests = 0 ; // how many times he got loans
+    static int nextPrimaryKey; // generated numbers with sybmbols
+    static int nextPrimaryKeyADMINS; // generated numbers with sybmbols
+    static bool UserDB ;
+    static bool isUserusing ;
+    static int cntTheifs ;
+    string primaryKey ;
+    struct Transaction {
+        string transactionType;
+        int amount;
+        string date;
+        Transaction* next;
+
+        Transaction() : amount(0), next(nullptr) {}
+    };
+    Transaction* transactionHistoryHead; // Pointer to the head of the transaction history
+
+public:
+    User() : transactionHistoryHead(nullptr) {}
+    bool setData(); // done
+    void getData(); // done
+    void newuserData() ; // done
+    void packData(); // done
+    void unpackData(); // done
+    void display() ; //done
+    void deleteData() ; // done
+    void getspecificUser() ; // done
+    void updateData() ; // done
+    void insertData(); // done
+    void setPrimaryKey() ; // done
+    static void loadNextPrimaryKey() ; // done
+    static void saveNextPrimaryKey() ; // done
+    bool minorAge() ; // done
+    void checkBalance() ; // done
+    void Deposit() ;// done
+    void Withdrawal() ;// done
+    void Transfer() ; // done
+    int menu() ; // done
+    string hashInfo(string& password) ; // done
+    void setDataField(const string& fieldPrompt, string& field) ;// done
+    void setDataField(const string& fieldPrompt, int& field) ; // done
+    void setDateOfBirth() ; // done
+    void addTransaction(const Transaction& transaction); // done
+    void displayTransactionHistory() ; // done
+    void FOUND(bool found,string theUser, string PHRASE) ; // done
+    int administratorLogin(); // done
+    int userLoginF(); // done
+    bool registerUser(); // done
+    void userMenu() ; // ddone
+    void userSwitch(int choice) ; // done
+    void editRecord() ; // done
+    void dbChoice() ; // done
+    void useSoftwareAS() ; // done
+    int login(const string& userType) ; // done
+
+// load stack with date of last loan has been taken
+    //User() ; // constructor
+    //bool loanManagement(int ID) ;
+};
+
+
+
+string record ;
+int User::nextPrimaryKey = 100;
+int User::nextPrimaryKeyADMINS = 10;
+int User:: cntTheifs = 1 ;
+bool User:: UserDB = true ; // true mean we deal with users DB, false means we deal with Admins DB
+bool User:: isUserusing = true ; // true means user is using, false means admin is using
+// isUserusing = false can act on UserDB = true and UserDB = false
+// isUserusing = true can act on UserDB = true
+
+void User::setDataField(const string& fieldPrompt, string& field) {
+    cout << fieldPrompt << ": ";
+    cin >> field;
+}
+void User::setDataField(const string& fieldPrompt, int& field) {
+    cout << fieldPrompt << ": ";
+    cin >> field;
+}
+void User::setDateOfBirth() {
+    setDataField("Please Enter your Date of birth (Day)", userDay);
+    setDataField("Please Enter your Date of birth (Month)", userMonth);
+    setDataField("Please Enter your Date of birth (Year)", userYear);
+}
+bool User::setData() {
+    setDataField("Please Enter your First name", firstName);
+    setDataField("Please Enter your Second name", secondName);
+    setDataField("Please Enter your Username", userName);
+    setDataField("Please Enter your Password", passWord);
+    setDataField("Please Enter your Contact information", contactInformation);
+    setDateOfBirth();
+    if (minorAge()) {
+        cout << "Minor age detected. Record not added." << endl;
+        return false ;
+    }
+    return true ;
+}
+void User::getData(){
+    cout << "Primary Key: " << primaryKey << endl
+    << "First name: " << firstName << endl
+    << "Second name: " << secondName << endl
+    << "Contact information: " << contactInformation << endl
+    << "Username: " << userName << endl ;
+    if (UserDB == true)
+    {
+        cout << "Balance: " << balance << endl
+        << "Loan requests: " << loanrequests << endl;
+    }
+    cout<<"___________________________________________________"<<endl;
+}
+void User::loadNextPrimaryKey() {
+    if (UserDB)
+    {
+        ifstream file("nextPrimaryKey.txt");
+        if (file.is_open()) {
+            file >> nextPrimaryKey;
+            file.close();
+        }
+    } else {
+        ifstream file("nextPrimaryKeyADMINS.txt");
+        if (file.is_open()) {
+            file >> nextPrimaryKeyADMINS;
+            file.close();
+        }
+    }
+}
+void User::saveNextPrimaryKey() {
+    if (UserDB)
+    {
+        ofstream file("nextPrimaryKey.txt");
+        if (file.is_open()) {
+            file << nextPrimaryKey;
+            file.close();
+        }
+    } else {
+        ofstream file("nextPrimaryKeyADMINS.txt");
+        if (file.is_open()) {
+            file << nextPrimaryKeyADMINS;
+            file.close();
+        }
+    }
+}
+void User::setPrimaryKey() {
+    if (UserDB)
+    {
+        loadNextPrimaryKey();
+        stringstream ss;
+        ss << setw(3) << setfill('0') << ((nextPrimaryKey / 1000000) % 1000) << "-"
+           << setw(3) << setfill('0') << ((nextPrimaryKey / 1000) % 1000) << "-"
+           << setw(3) << setfill('0') << (nextPrimaryKey % 1000);
+        primaryKey = ss.str();
+        nextPrimaryKey++;
+        saveNextPrimaryKey();
+    } else {
+        loadNextPrimaryKey();
+        stringstream ss;
+        ss << setw(2) << setfill('C') << ((nextPrimaryKeyADMINS / 1000000) % 1000) << "-"
+             << setw(2) << setfill('B') << ((nextPrimaryKeyADMINS / 1000) % 1000) << "-"
+             << setw(2) << setfill('F') << (nextPrimaryKeyADMINS % 1000) ;
+        primaryKey = ss.str();
+        nextPrimaryKeyADMINS++;
+        saveNextPrimaryKey();
+    }
+}
+void User::packData() {
+    if (!UserDB) {
+        record = primaryKey + "|" + userName + "|" + passWord
+               + "|" + firstName + "|" + secondName
+               + "|" + contactInformation;
+    } else {
+        record = primaryKey + "|" + userName + "|" + passWord
+               + "|" + firstName + "|" + secondName
+               + "|" + contactInformation
+               + "|" + to_string(balance) + "|" + to_string(loanrequests);
+    }
+}
+void User::unpackData() {
+    stringstream ss(record);
+    string field;
+    int count = 0;
+
+    while (getline(ss, field, '|')) {
+        stringstream converter(field);
+        switch (count) {
+            case 0:
+                primaryKey = field;
+                break;
+            case 1:
+                userName = field;
+                break;
+            case 2:
+                passWord = field;
+                break;
+            case 3:
+                firstName = field;
+                break;
+            case 4:
+                secondName = field;
+                break;
+            case 5:
+                contactInformation = field;
+                break;
+            default:
+                break;
+        }
+        count++;
+    }
+
+    if (UserDB) {
+        balance = (count >= 7) ? stoi(field) : 0;
+        loanrequests = (count >= 8) ? stoi(field) : 0;
+    }
+}
+void User::newuserData() {
+    setPrimaryKey();
+    if (!UserDB) {
+        record = primaryKey + "|" + userName + "|" + hashInfo(passWord)
+               + "|" + firstName + "|" + secondName
+               + "|" + contactInformation;
+    } else {
+        record = primaryKey + "|" + userName + "|" + hashInfo(passWord)
+               + "|" + firstName + "|" + secondName
+               + "|" + contactInformation
+               + "|" + to_string(balance) + "|" + to_string(loanrequests);
+    }
+}
+string User::hashInfo(string& passWord) {
+    unsigned int hash = 0;
+    for (char ch : passWord) {
+        hash = (hash << 5) + hash + ch; // Simple hashing algorithm
+    }
+    string answer = to_string(hash) ;
+    return answer ;
+}
+void User::FOUND(bool found,string theUser, string PHRASE){
+        if (found) {
+        remove("BankDB.txt"); // Remove the original file
+        rename("tempDB.txt", "BankDB.txt"); // Rename tempDB.txt to BankDB.txt
+        cout << "User:  " << theUser << " " << PHRASE << endl;
+    } else {
+        cout << "No such user exist ):" << endl;
+        remove("tempDB.txt"); // Remove the temporary file
+    }
+}
+bool User::minorAge() {
+    // Get the current time as a time point
+    time_t currentTime = time(nullptr);
+
+    // Convert the current time to a tm struct
+    tm* timeInfo = localtime(&currentTime);
+
+    // Extract year, month, and day
+    int currentYear = timeInfo->tm_year + 1900; // tm_year is years since 1900
+    int currentMonth = timeInfo->tm_mon + 1;    // tm_mon is zero-based (0-11)
+    int currentDay = timeInfo->tm_mday;         // tm_mday is day of the month (1-31)
+
+    // Compare the user's birthdate with the current date to determine age
+    if (currentYear - userYear < 18) {
+        return true; // User is a minor
+    } else if (currentYear - userYear == 18) {
+        // Additional check for the month and day to determine if user turned 18 yet
+        if (currentMonth < userMonth) {
+            return true; // User is a minor
+        } else if (currentMonth == userMonth) {
+            if (currentDay < userDay) {
+                return true; // User is a minor
+            }
+        }
+    }
+
+    return false; // User is not a minor
+}
+void User::insertData(){
+    fstream file ;
+    if (UserDB) file.open("BankDB.txt", ios::out | ios::app) ;
+    else file.open("Admins.txt", ios::out | ios::app) ;
+    char check = 'y' ;
+    do
+    {
+        if (setData()) {
+            newuserData();
+            file << record << endl;
+        }
+        cout << "Would you like to write another record ?? press (Y/N ) for (Yes/No)" << endl ;
+        cin >> check ;
+    } while (check == 'y' || check == 'Y') ;
+
+    file.close() ;
+    menu() ;
+}
+void User::getspecificUser() {
+    ifstream read_file("BankDB.txt");
+    bool check = false;
+    string specialID;
+
+    if (isUserusing) {
+        specialID = LoginID;
+        getData();
+        check = true;
+    } else {
+        cout << "Enter the user ID: ";
+        cin >> specialID;
+
+        while (getline(read_file, record)) {
+            int pos = record.find('|');
+            string tempID = record.substr(0, pos);
+
+            if (tempID == specialID) {
+                unpackData(); // Assuming unpackData() sets necessary user information
+                getData(); // Display user information
+                check = true;
+                break;
+            }
+        }
+    }
+
+    read_file.close();
+
+    if (!check) {
+        cout << "User ID not found." << endl;
+    }
+
+    menu();
+}
+void User::display() {
+    ifstream read_file("BankDB.txt");
+    while (getline(read_file, record)) {
+        unpackData();
+        getData();
+    }
+    read_file.close();
+    menu();
+}
+void User::deleteData() {
+    ifstream inputFile("BankDB.txt");
+    ofstream tempFile("tempDB.txt");
+    cout << "May you tell me the ID: " ;
+    string specialID ;
+    cin >> specialID ;
+
+    bool found = false;
+    while (getline(inputFile, record)) {
+        //int pos = record.find('|');
+        //primaryKey = record.substr(0, pos);
+        unpackData(); // no parameter since its always record, so its implemented already in the function body
+
+        if (primaryKey == specialID) {
+            found = true;
+            continue; // Skip writing the record to tempDB.txt
+        }
+
+        tempFile << record << endl;
+    }
+
+    inputFile.close();
+    tempFile.close();
+
+    FOUND(found, userName, " Delete process is done successfully : )" ) ;
+    menu() ;
+}
+void User::updateData() {
+    ifstream inputFile("BankDB.txt");
+    ofstream tempFile("tempDB.txt");
+
+    bool found = false;
+    string specialID;
+    if (isUserusing) {
+        specialID = LoginID;
+    } else {
+        cout << "Enter the user's ID: ";
+        cin >> specialID;
+    }
+
+    while (getline(inputFile, record)) {
+        unpackData();
+        if (primaryKey == specialID) {
+            found = true;
+            cout << "What do you want to update? (1 - 5)" << endl;
+            cout << "1 -> First Name" << endl
+                 << "2 -> Second Name" << endl
+                 << "3 -> Username" << endl
+                 << "4 -> Password" << endl
+                 << "5 -> Contact information" << endl;
+
+            int cnt;
+            cin >> cnt;
+            switch (cnt) {
+                case 1:
+                    setDataField("Please Enter your First name", firstName);
+                    break;
+                case 2:
+                    setDataField("Please Enter your Second name", secondName);
+                    break;
+                case 3:
+                    setDataField("Please Enter your Username", userName);
+                    break;
+                case 4:
+                    setDataField("Please Enter your Password", passWord);
+                    break;
+                case 5:
+                    setDataField("Please Enter your Contact information", contactInformation);
+                    break;
+                default:
+                    break;
+            }
+        }
+        packData();
+        tempFile << record << endl;
+    }
+
+    inputFile.close();
+    tempFile.close();
+
+    if (found) {
+        FOUND(true, userName, " Update process is done successfully :)");
+    } else {
+        cout << "User ID not found." << endl;
+    }
+    menu();
+}
+void User::checkBalance() {
+    ifstream file("BankDB.txt");
+    string specialID;
+
+    if (isUserusing) {
+        cout << "Hello, " << firstName << endl;
+        specialID = LoginID;
+    } else {
+        cout << "May you tell me the ID: ";
+        cin >> specialID;
+    }
+
+    bool found = false;
+    while (getline(file, record)) {
+        unpackData();
+
+        if (primaryKey == specialID) {
+            cout << "Current Primary Key: " << primaryKey << " Balance: " << balance << endl;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        cout << "No such primary key with this value exists :(" << endl;
+    }
+
+    file.close();
+    menu();
+}
+void User::Deposit() {
+    ifstream inputFile("BankDB.txt");
+    ofstream tempFile("tempDB.txt");
+    bool found = false;
+
+    string specialID;
+    int amount;
+
+    if (isUserusing) {
+        specialID = LoginID;
+    } else {
+        cout << "May you tell me the ID: ";
+        cin >> specialID;
+    }
+
+    cout << "May you tell me how much you wanna deposit: ";
+    cin >> amount;
+
+    string currentYear, currentMonth, currentDay;
+
+
+while (getline(inputFile, record)) {
+    string originalRecord = record; // Store the original record
+    unpackData();
+    if (primaryKey == specialID) {
+        found = true;
+        balance += amount;
+        packData(); // Update the balance in the record
+    }
+    tempFile << record << endl; // Write the updated or original record to the temp file
+}
+    inputFile.close();
+    tempFile.close();
+
+    time_t currentTime = time(nullptr);
+    if (currentTime != -1) {
+        tm* timeInfo = localtime(&currentTime);
+        currentYear = to_string(timeInfo->tm_year + 1900);
+        currentMonth = to_string(timeInfo->tm_mon + 1);
+        currentDay = to_string(timeInfo->tm_mday);
+    } else {
+        cout << "Error getting current time." << endl;
+        return;
+    }
+    Transaction depositTransaction;
+    depositTransaction.transactionType = "Deposit";
+    depositTransaction.amount = amount;
+    depositTransaction.date = currentDay + '/' + currentMonth + '/' + currentYear;
+
+    addTransaction(depositTransaction);
+
+    //FOUND(found, userName, " Deposit process is done successfully :)") ;
+    menu();
+}
+void User::displayTransactionHistory() {
+    ifstream file("BankDB.txt");
+    string primaryID;
+
+    if (isUserusing) {
+        cout << "Hello, " << firstName << endl;
+        primaryID = LoginID;
+    } else {
+        cout << "Please enter the primary key: ";
+        cin >> primaryID;
+    }
+
+    bool found = false;
+
+    while (getline(file, record)) {
+        unpackData();
+        if (primaryKey == primaryID) {
+            cout << "Transaction History for Primary Key: " << primaryKey << endl;
+            Transaction* currentTransaction = transactionHistoryHead;
+            while (currentTransaction != nullptr) {
+                cout << "Transaction Type: " << currentTransaction->transactionType << endl;
+                cout << "Amount: " << currentTransaction->amount << endl;
+                cout << "Date: " << currentTransaction->date << endl;
+                cout << "------------------------" << endl;
+                currentTransaction = currentTransaction->next;
+            }
+            found = true;
+            break;
+        }
+    }
+
+    file.close();
+
+    if (!found) {
+        cout << "No transaction history found for Primary Key: " << primaryID << endl;
+    }
+
+    menu(); // Assuming menu() is used to return to the main menu after displaying the history
+}
+void User::Withdrawal() {
+    ifstream inputFile("BankDB.txt");
+    ofstream tempFile("tempDB.txt");
+
+    string specialID;
+    int amount;
+
+    if (isUserusing) {
+        cout << "Hello, " << firstName << endl;
+        specialID = LoginID;
+    } else {
+        cout << "May you tell me the ID: ";
+        cin >> specialID;
+    }
+
+    cout << "May you tell me how much you wanna withdraw: ";
+    cin >> amount;
+
+    bool found = false;
+
+    while (getline(inputFile, record)) {
+        unpackData();
+
+        if (primaryKey == specialID) {
+            found = true;
+            if (balance >= amount) {
+                balance -= amount;
+                packData();
+            } else {
+                cout << "Insufficient balance. Withdrawal failed.\n" << endl;
+                tempFile << record << endl; // Keep the record unchanged if the balance is insufficient
+            }
+        } else {
+            tempFile << record << endl; // Keep writing other records unchanged
+        }
+    }
+
+    inputFile.close();
+    tempFile.close();
+
+    if (found) {
+        // Transaction details
+        string currentYear, currentMonth, currentDay;
+        time_t currentTime = time(nullptr);
+
+        if (currentTime != -1) {
+            tm* timeInfo = localtime(&currentTime);
+            currentYear = to_string(timeInfo->tm_year + 1900);
+            currentMonth = to_string(timeInfo->tm_mon + 1);
+            currentDay = to_string(timeInfo->tm_mday);
+        }
+
+        Transaction withdrawalTransaction;
+        withdrawalTransaction.transactionType = "Withdrawal";
+        withdrawalTransaction.amount = amount;
+        withdrawalTransaction.date = currentDay + '/' + currentMonth + '/' + currentYear;
+
+        // Add the transaction to the user's transaction history
+        addTransaction(withdrawalTransaction);
+
+        FOUND(true, userName, "Withdrawal process is done successfully :)");
+    } else {
+        cout << "No such ID found in records." << endl;
+    }
+
+    menu();
+}
+void User::Transfer() {
+    ifstream inputFile("BankDB.txt");
+    ofstream tempFile("tempDB.txt");
+
+    bool foundFirstID = false;
+    bool foundSecondID = false;
+    string firstID, secondID;
+    int amount;
+    string sender, receiver;
+
+    // Check if the user is already logged in
+    if (isUserusing) {
+        firstID = LoginID;
+        foundFirstID = true;
+    } else {
+        cout << "What is the sender ID: ";
+        cin >> firstID;
+    }
+
+    cout << "What is the Receiver ID: ";
+    cin >> secondID;
+    cout << "What is the amount you want to send: ";
+    cin >> amount;
+
+    while (getline(inputFile, record)) {
+        unpackData();
+
+        if (primaryKey == firstID) {
+            foundFirstID = true;
+            if (balance < amount) {
+                cout << "You have insufficient balance for the transfer." << endl;
+                break; // Stop processing if there's not enough balance
+            }
+            sender = userName;
+            balance -= amount;
+        }
+
+        if (primaryKey == secondID) {
+            foundSecondID = true;
+            receiver = userName;
+            balance += amount;
+        }
+
+        packData();
+        tempFile << record << endl;
+    }
+
+    inputFile.close();
+    tempFile.close();
+
+    if (foundFirstID && foundSecondID) {
+        string phrase = sender + " has successfully transferred " + to_string(amount) + " to " + receiver;
+        FOUND(true, userName, phrase);
+    } else {
+        cout << "Invalid User IDs or insufficient balance." << endl;
+    }
+
+    menu();
+}
+void User::addTransaction(const Transaction& transaction){
+    Transaction* newTransaction = new Transaction(transaction);
+    newTransaction->next = nullptr;
+
+    if (transactionHistoryHead == nullptr)
+    {
+        transactionHistoryHead = newTransaction;
+    }
+    else
+    {
+        Transaction* temp = transactionHistoryHead;
+        while (temp->next != nullptr)
+            {
+                temp = temp->next;
+            }
+        temp->next = newTransaction;
+    }
+}
+void User::userMenu() {
+        if (isUserusing) {
+            // Display user menu options
+            cout << "1 -> get my data [ getspecificUser() ]\n"
+                 << "2 -> update my data [ updateData() ]\n"
+                 << "3 -> check my balance [ checkBalance() ]\n"
+                 << "4 -> deposit [ Deposit() ]\n"
+                 << "5 -> withdrawal [ Withdrawal() ]\n"
+                 << "6 -> transfer money to friend [ Transfer() ]\n"
+                 << "7 -> Display transaction history for my account\n"
+                 << "8. Exit\n";
+        } else {
+            // Display admin menu options
+            cout << "1 -> enter new user data [ insertData() ]\n"
+                 << "2 -> delete user data [ deleteData() ]\n"
+                 << "3 -> get user data [ getspecificUser() ]\n"
+                 << "4 -> update user data [ updateData() ]\n"
+                 << "5 -> check user balance [ checkBalance() ]\n"
+                 << "6 -> deposit for a user [ Deposit() ]\n"
+                 << "7 -> withdrawal for a user [ Withdrawal() ]\n"
+                 << "8 -> transfer money to another user [ Transfer() ]\n"
+                 << "9 -> display all the DB [ Display() ]\n"
+                 << "10 -> Display transaction history for an account\n"
+                 << "11 -> Choose which DB to manipulate\n"
+                 << "12 -> Exit\n\n";
+        }
+}
+void User::userSwitch(int choice){
+    if (isUserusing && choice <= 8) {
+        switch (choice)
+        {
+        case 1 :
+            getspecificUser() ;
+            break ;
+        case 2:
+            updateData() ;
+            break ;
+        case 3:
+            checkBalance() ;
+            break ;
+        case 4:
+            Deposit() ;
+            break ;
+        case 5:
+            Withdrawal() ;
+            break ;
+        case 6:
+            Transfer() ;
+            break ;
+        case 7:
+            displayTransactionHistory() ;
+            break ;
+        case 8:
+            useSoftwareAS() ;
+            break;
+        default:
+            cout << "Please enter a valid option.\n";
+            break ;
+        }
+    }
+    else if (choice <= 12){
+        switch (choice)
+        {
+        case 1 :
+            insertData() ;
+            break ;
+        case 2:
+            deleteData() ;
+            break ;
+        case 3:
+            getspecificUser() ;
+            break ;
+        case 4:
+            updateData() ;
+            break ;
+        case 5:
+            checkBalance() ;
+            break ;
+        case 6:
+            Deposit() ;
+            break ;
+        case 7:
+            Withdrawal() ;
+            break ;
+        case 8:
+            Transfer() ;
+            break ;
+        case 9:
+            display() ;
+            break ;
+        case 10:
+            displayTransactionHistory() ;
+            break ;
+        case 11:
+            dbChoice() ;
+            break ;
+        case 12:
+            useSoftwareAS() ;
+            break;
+        default:
+            cout << "Please enter a valid option.\n";
+            break ;
+        }
+    }
+}
+void User::dbChoice() {
+    char c;
+    cout << "Which DB do you want to deal with, sir? (type U -> userDB or A -> adminDB)\n";
+    cin >> c;
+    switch (c) {
+        case 'U':
+            UserDB = true;
+            break;
+        case 'A':
+            UserDB = false;
+            break;
+        default:
+            cout << "Invalid choice. Defaulting to userDB.\n";
+            UserDB = true; // Defaulting to userDB if an invalid choice is entered
+            break;
+    }
+}
+int User::login(const string& userType) {
+    ifstream file(userType + ".txt");
+    bool check = true;
+    string userLogin, passwordLogin;
+
+    cout << "Please enter your username: ";
+    cin >> userLogin;
+    cout << "Please enter your password: ";
+    cin >> passwordLogin;
+
+    while (getline(file, record)) {
+        unpackData();
+        if (userName == userLogin && passWord == hashInfo(passwordLogin)) {
+            LoginID = primaryKey ;
+            cout << "Hello " << firstName << endl;
+            isUserusing = (userType == "BankDB"); // Set user status based on type
+            check = false;
+            if (userType == "Admins") {
+                cout << "Please choose the DB you want to use." << endl;
+                dbChoice();
+            }
+            break;
+        }
+    }
+
+    if (cntTheifs == 3) {
+        cout << "Too many failed login attempts. Locking the system." << endl;
+        return 0; // Lock the system or perform necessary actions for security
+    } else if (check) {
+        cout << "Invalid " << userType << " credentials. Please try again." << endl;
+        cntTheifs++;
+        useSoftwareAS();
+    }
+    return 0;
+}
+int User::administratorLogin() {
+    return login("Admins");
+}
+int User::userLoginF() {
+    return login("BankDB");
+}
+void User::useSoftwareAS() {
+    char userType;
+    cout << "Use software as Admin or User? (A for Admin / U for User): ";
+    cin >> userType;
+
+    if (toupper(userType) == 'A') {
+        cout << "Well, Admin! Please enter your credentials.\n";
+        administratorLogin();
+    } else {
+        cout << "Please enter your credentials as a User.\n";
+        userLoginF();
+    }
+    menu();
+}
+int User::menu() {
+    cout << "Welcome back sir, how can I serve you today :)\n";
+
+    int choice = -1;
+
+    while (choice == -1 )
+    {
+        userMenu() ;
+        cout << "Enter your choice: ";
+        cin >> choice;
+        userSwitch(choice) ;
+    }
+
+    return 0;
+}
+
+int main() {
+    User obj1 ;
+    obj1.useSoftwareAS() ;
+    return 0;
+}
